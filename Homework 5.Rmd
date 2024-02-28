@@ -1,0 +1,168 @@
+---
+title: "Homework 5"
+author: "Anthony Yang"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.align = "center", fig.height=3, fig.width=6, warning=FALSE, message=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=100))
+
+letters <- read.csv('letter_frequencies.csv')
+
+suppressWarnings({
+  suppressPackageStartupMessages(library(ggplot2))
+  suppressPackageStartupMessages(library(tidyverse))
+  suppressPackageStartupMessages(library(stringr))
+  suppressPackageStartupMessages(library(mosaic)) 
+})
+```
+
+Link to GitHub Repository: https://github.com/anthonyangg/sds315-homework5
+
+## Problem 1
+
+#### Null Hypothesis
+
+The null hypothesis is the observed data, 70 flagged trades out of a total of 2021, is consistent with the baseline flagging rate at Iron Bank of 2.4%.
+
+#### Test Statistic
+
+Our test statistic was a chi-squared statistic of the number of flagged trades at the baseline rate of 2.4%. Our significance level will be set as an alpha value of 0.05.
+
+#### Probability Distribution
+
+```{r echo=FALSE}
+expected_distribution = c(flagged = 0.024, nonflagged = 0.976)
+observed_counts = c(flagged = 70, nonflagged = 1951)
+
+numtrades = 2021
+simulated_counts = rmultinom(1, numtrades, expected_distribution)
+
+simulated_counts = numtrades * expected_distribution
+
+chi_squared_statistic = function(observed, expected) {
+  sum((observed-expected)^2/expected)
+}
+
+chi2 = chi_squared_statistic(simulated_counts, numtrades*expected_distribution)
+
+chi2_sim = do(100000) * {
+  simulated_counts = rmultinom(1, numtrades, expected_distribution)
+  this_chi2 = chi_squared_statistic(simulated_counts, numtrades*expected_distribution)
+  c(chi2 = this_chi2)
+}
+
+ggplot(chi2_sim) + geom_histogram(aes(x=chi2)) + xlab("Chi-squared Test Statistic") + 
+  ylab("Count") + theme_classic()
+```
+
+The p-value of the test statistic assuming the null hypothesis is true was `r sum(chi2_sim >= 9.527)/100000`. 
+
+#### Conclusion
+
+Because the p-value is less than our significance level of 0.05, we will conclude that our result is statistically significant rejecting our null hypothesis and concluding that the observed data of 70 flagged trades out of 2021 is not consistent with the baseline rate of 2.4%. 
+
+
+## Problem 2
+
+#### Null Hypothesis
+
+The null hypothesis is the observed data, 8 health code violations out of 50 health inspections, is consistent with the Health's Department's baseline rate of healthcode violation citations of 3% .
+
+#### Test Statistic
+
+Our test statistic was a chi-squared statistic of the number of health code violations at the baseline rate of 3%. Our significance level will be set as an alpha value of 0.05.
+
+#### Probability Distribution
+
+```{r echo=FALSE}
+healthexpected_distribution = c(violated = 0.03, notviolated = 0.97)
+healthobserved_counts = c(violated = 8, notviolated = 42)
+
+numinspections = 50
+simulated_inspections = rmultinom(1, numinspections, healthexpected_distribution)
+
+simulated_inspections = numinspections * healthexpected_distribution
+
+chi_squared_statistic = function(observed, expected) {
+  sum((observed-expected)^2/expected)
+}
+
+chi2 = chi_squared_statistic(simulated_inspections, numinspections*healthexpected_distribution)
+
+chi2_sim = do(100000) * {
+  simulated_inspections = rmultinom(1, numinspections, healthexpected_distribution)
+  this_chi2 = chi_squared_statistic(simulated_inspections,numinspections*healthexpected_distribution)
+  c(chi2 = this_chi2)
+}
+
+ggplot(chi2_sim) + geom_histogram(aes(x=chi2)) + xlab("Chi-squared Test Statistic") + 
+  ylab("Count") + theme_classic()
+```
+
+The p-value of the test statistic assuming the null hypothesis is true was `r sum(chi2_sim >= 28.167)/100000`. 
+
+#### Conclusion
+
+Because the p-value is less than our significance level of 0.05, we will conclude that our result is statistically significant rejecting our null hypothesis and concluding that the observed data of 8 health code violations out of 50 health inspections is not consistent with the baseline rate of 3%.
+
+
+## Problem 3
+
+```{r echo=FALSE}
+sentences <- readLines("brown_sentences.txt")
+
+calculate_chi_squared = function(sentence, freq_table) {
+  
+  # Ensure letter frequencies are normalized and sum to 1
+  freq_table$Probability = freq_table$Probability / sum(freq_table$Probability)
+  
+  # Remove non-letters and convert to uppercase
+  clean_sentence = gsub("[^A-Za-z]", "", sentence)
+  clean_sentence = toupper(clean_sentence)
+  
+  # Count the occurrences of each letter in the sentence
+  observed_counts = table(factor(strsplit(clean_sentence, "")[[1]], levels = freq_table$Letter))
+  
+  # Calculate expected counts
+  total_letters = sum(observed_counts)
+  expected_counts = total_letters * freq_table$Probability
+  
+  # Chi-squared statistic
+  chi_squared_stat = sum((observed_counts - expected_counts)^2 / expected_counts)
+  
+  return(chi_squared_stat)
+}
+
+chisquare_values <- c()
+for (x in sentences) {
+  chisquare_values <- append(chisquare_values, calculate_chi_squared(x, letters))
+}
+```
+
+
+```{r echo=FALSE}
+newsentences <- c(
+  "She opened the book and started to read the first chapter, eagerly anticipating what might come next.",
+  "Despite the heavy rain, they decided to go for a long walk in the park, crossing the main avenue by the fountain in the center.",
+  "The museum’s new exhibit features ancient artifacts from various civilizations around the world.",
+  "He carefully examined the document, looking for any clues that might help solve the mystery.",
+  "The students gathered in the auditorium to listen to the guest speaker’s inspiring lecture.",
+  "Feeling vexed after an arduous and zany day at work, she hoped for a peaceful and quiet evening at home, cozying up after a quick dinner with some TV, or maybe a book on her upcoming visit to Auckland.",
+  "The chef demonstrated how to prepare a delicious meal using only locally sourced ingredients, focusing mainly on some excellent dinner recipes from Spain.",
+  "They watched the sunset from the hilltop, marveling at the beautiful array of colors in the sky.",
+  "The committee reviewed the proposal and provided many points of useful feedback to improve the project’s effectiveness.",
+  "Despite the challenges faced during the project, the team worked tirelessly to ensure its successful completion, resulting in a product that exceeded everyone’s expectations."
+)
+
+pvalues <- c()
+for (x in newsentences) {
+  chisquarevalue <- calculate_chi_squared(x, letters)
+  pvalues <- append(pvalues, round(sum(chisquare_values >= chisquarevalue)/56745,3))
+}
+
+knitr::kable(pvalues, col.names = 'p-values')
+```
+
+The 6th sentence was produced by a LLM because the p-value is severely lower compared to the p-values of every other sentence.
